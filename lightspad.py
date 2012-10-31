@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from collections import defaultdict
 import time
+import os
+import json
 from pylaunchpad import launchpad
 
 GRID_WIDTH = GRID_HEIGHT = 5
@@ -9,10 +11,10 @@ GRID_ORIGIN_Y = 1
 
 COLOUR_RED = (3, 0)
 COLOUR_GREEN = (0, 3)
-COLOUR_ORANGE = (3, 3)
+COLOUR_ORANGE = (1, 1)
 COLOUR_OFF = (0, 0)
 
-LEVELS = [
+DEFAULT_PUZZLES = [
     [
         (3, 0),
         (2, 1),
@@ -45,15 +47,19 @@ LEVELS = [
 class LightsPadGame(object):
     on_colour = COLOUR_GREEN
     off_colour = COLOUR_OFF
+    border_colour = COLOUR_ORANGE
     tick_rate = 20
     
     grid = None
     launchpad = None
+    puzzles = None
+    current_puzzle = 0
     
-    def __init__(self, level):
+    def __init__(self, puzzles):
         self.launchpad = launchpad.launchpad(*launchpad.findLaunchpads()[0])
-        self.reset_game()
-        self.load_level(level)
+        self.puzzles = puzzles
+        self.draw_border()
+        self.start_puzzle()
         
     def run(self):
         while True:
@@ -70,16 +76,30 @@ class LightsPadGame(object):
                 self.grid_pressed(self.to_grid_x(x), self.to_grid_y(y))
                 self.draw_grid()
     
-    def load_level(self, level):
-        for x, y in level:
-            self.grid[x][y] = True
-        self.draw_grid()
-    
     def grid_pressed(self, x, y):
         if not self.position_is_valid(x, y):
             return
         for grid_x, grid_y in self.get_neighbours(x, y) + [(x, y)]:
             self.grid_toggle(grid_x, grid_y)
+        self.check_puzzle_finished()
+    
+    def check_puzzle_finished(self):
+        if self.grid_cleared():
+            self.current_puzzle += 1
+            self.start_puzzle()
+    
+    def grid_cleared(self):
+        for x in range(GRID_WIDTH):
+            for y in range(GRID_HEIGHT):
+                if self.grid[x][y]:
+                    return False
+        return True
+    
+    def draw_border(self):
+        for x in range(GRID_ORIGIN_X-1, GRID_WIDTH+2):
+            for y in range(GRID_ORIGIN_Y-1, GRID_HEIGHT+2):
+                if not self.position_is_valid(self.to_grid_x(x), self.to_grid_y(y)):
+                    self.launchpad.light(x, y, *self.border_colour)
     
     def get_neighbours(self, x, y):
         positions = [
@@ -115,11 +135,29 @@ class LightsPadGame(object):
     def to_grid_y(self, y):
         return y - GRID_ORIGIN_Y
     
-    def reset_game(self):
+    def start_puzzle(self):
         self.grid = defaultdict(lambda: defaultdict(bool))
+        for x, y in self.puzzles[self.current_puzzle]:
+            self.grid[x][y] = True
+        self.draw_grid()
+        
+
+
+def load_puzzles():
+    if not os.path.isfile("puzzles.json"):
+        return DEFAULT_PUZZLES
+    try:
+        with open("puzzles.json", "r") as f:
+            print "loaded puzzles.json"
+            return json.loads(f.read())
+    except:
+        print "didn't load puzzles.json"
+        return DEFAULT_PUZZLES
+
 
 def main():
-    LightsPadGame(LEVELS[0]).run()
+    puzzles = load_puzzles()
+    LightsPadGame(puzzles).run()
 
 if __name__ == '__main__':
     main()
