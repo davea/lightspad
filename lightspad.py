@@ -78,10 +78,17 @@ class LightsPadGame(object):
     
     def grid_pressed(self, x, y):
         if not self.position_is_valid(x, y):
-            return
+            if self.position_is_border(x, y):
+                self.start_puzzle()
+                return
+            else:
+                return
         for grid_x, grid_y in self.get_neighbours(x, y) + [(x, y)]:
             self.grid_toggle(grid_x, grid_y)
         self.check_puzzle_finished()
+    
+    def position_is_border(self, x, y):
+        return x == -1 or x == GRID_WIDTH or y == -1 or y == GRID_HEIGHT
     
     def check_puzzle_finished(self):
         if self.grid_cleared():
@@ -100,6 +107,17 @@ class LightsPadGame(object):
             for y in range(GRID_ORIGIN_Y-1, GRID_HEIGHT+2):
                 if not self.position_is_valid(self.to_grid_x(x), self.to_grid_y(y)):
                     self.launchpad.light(x, y, *self.border_colour)
+    
+    def draw_start_animation(self):
+        self.draw_empty_grid()
+        for x in range(GRID_WIDTH):
+            for y in range(GRID_HEIGHT):
+                lx = self.to_launchpad_x(x)
+                ly = self.to_launchpad_y(y)
+                self.launchpad.light(lx, ly, *COLOUR_RED)
+                if x > 0:
+                    self.launchpad.light(lx-1, ly, *COLOUR_OFF)
+            time.sleep(1.0/8)
     
     def get_neighbours(self, x, y):
         positions = [
@@ -123,6 +141,12 @@ class LightsPadGame(object):
                 colour = self.on_colour if on else self.off_colour
                 self.launchpad.light(self.to_launchpad_x(x), self.to_launchpad_y(y), *colour)
     
+    def draw_empty_grid(self):
+        for x in range(GRID_WIDTH):
+            for y in range(GRID_HEIGHT):
+                self.launchpad.light(self.to_launchpad_x(x), self.to_launchpad_y(y), *self.off_colour)
+        
+    
     def to_launchpad_x(self, x):
         return x + GRID_ORIGIN_X
     
@@ -139,6 +163,7 @@ class LightsPadGame(object):
         self.grid = defaultdict(lambda: defaultdict(bool))
         for x, y in self.puzzles[self.current_puzzle]:
             self.grid[x][y] = True
+        self.draw_start_animation()
         self.draw_grid()
         
 
