@@ -1,2 +1,2 @@
 hg+http://bitbucket.org/pygame/pygame
--e git+https://github.com/davea/pyLaunchpad#egg=pylaunchpad
+-e git+https://github.com/rjmunro/pyLaunchpad#egg=pylaunchpad
